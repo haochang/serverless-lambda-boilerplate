@@ -1,0 +1,54 @@
+service: my-lambda-service
+
+package:
+  exclude:
+    - '*.md'
+    - '.env*'
+    - 'node_modules/**'
+    - .serverless/**
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: ${env:STAGE}
+  region: us-east-1
+  stackTags:
+    role: ${self:service}-${self:provider.stage}
+    application_type: serverless
+  environment:
+
+  iamManagedPolicies:
+    - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+functions:
+  my-lambda:
+    handler: api/handlers/mylambda.handler
+    events:
+      - http:
+          path: /api/mylambda
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+    environment:
+
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  serverless-offline:
+    httpPort: 4000
+
+resources:
+  Description: My lambda stack
