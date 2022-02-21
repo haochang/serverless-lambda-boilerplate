@@ -16,6 +16,12 @@ provider:
   runtime: nodejs14.x
   stage: ${env:STAGE}
   region: us-east-1
+  httpApi:
+    authorizers:
+      serviceAuthorizer:
+        identitySource: $request.header.Authorization
+        issuerUrl: https://cognito-idp.us-west-2.amazonaws.com/${env:COGNITO_USERPOOL_ID}
+        audience: ${env:COGNITO_USERPOOL_CLIENT_ID}
   stackTags:
     role: ${self:service}-${self:provider.stage}
     application_type: serverless
@@ -28,9 +34,10 @@ functions:
   my-lambda:
     handler: api/handlers/mylambda.handler
     events:
-      - http:
+      - httpApi:
           path: /api/mylambda
           method: get
+          authorizer: serviceAuthorizer
           cors:
             origin: '*'
             headers:
