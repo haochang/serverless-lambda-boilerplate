@@ -73,14 +73,23 @@ resources:
         ManagedPolicyArns:
           - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
           - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: ElasticsearchPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: 'es:*'
+                  Resource:
+                    - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/stories/*'
     ElasticsearchDomain:
       Type: AWS::Elasticsearch::Domain
       Properties:
         DomainName: 'stories'
-        ElasticsearchVersion: '2.3'
+        ElasticsearchVersion: '7.10'
         ElasticsearchClusterConfig:
           InstanceCount: '1'
-          InstanceType: 't2.micro.elasticsearch'
+          InstanceType: 't2.medium.elasticsearch'
         EBSOptions:
           EBSEnabled: true
           VolumeSize: '20'
@@ -91,8 +100,31 @@ resources:
             - Effect: 'Allow'
               Principal:
                 AWS: !GetAtt LambdaElasticSearchAccessRole.Arn
+              Action: 'es:*'
+              Resource:
+                - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/stories/*'
+              Condition: {
+                IpAddress: {
+                  aws:SourceIp: [
+                    '81.154.88.33'
+                  ]
+                }
+              }
+            - Effect: 'Allow'
+              Principal:
+                AWS: '*'
               Action: 'es:ESHttp*'
               Resource:
                 - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/stories/*'
+              Condition: {
+                IpAddress: {
+                  aws:SourceIp: [
+                    '92.22.57.82',
+                    '80.7.89.82',
+                    '192.0.2.0/24',
+                    '81.154.88.33'
+                  ]
+                }
+              }
         AdvancedOptions:
           rest.action.multi.allow_explicit_index: true

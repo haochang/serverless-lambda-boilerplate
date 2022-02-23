@@ -1,32 +1,29 @@
-const aws4 =  require('aws4');
-const fetch = require('node-fetch');
+const AWS = require('aws-sdk');
+const { Client } = require('@elastic/elasticsearch');
+const { createAWSConnection, awsGetCredentials } = require('@acuris/aws-es-connection');
 
 exports.handleGet = async (event, context) => {
-  const host = process.env.ELASTICSEARCH_ENDPOINT;
-  const indexName = 'stories';
-  const headers = {
-    'Content-Type': 'application/json',
-  };
 
-  const options = aws4.sign({
-    host,
-    path: '/' + indexName,
-    method: 'HEAD',
-    headers,
+  const host = process.env.ELASTICSEARCH_ENDPOINT;
+  const awsCredentials = await awsGetCredentials();
+
+  const AWSConnection = createAWSConnection(awsCredentials)
+  const client = new Client({
+    ...AWSConnection,
+    node: `https://${host}`
   });
 
-  const result = await fetch(
-    `https://${host}/${indexName}`,
-    options,
-  );
-
-  const body = await result.text()
-  return getHttpResponseData(body);
-};
-
-const getHttpResponseData = (body) => {
+  const result = await client.search({
+    index: 'favorite_candy',
+    body: {
+      query: {
+        match: { quote: 'Lisa' }
+      }
+    }
+  });
+console.log(`hits`, result.body.hits);
   return {
     statusCode: 200,
-    body
+    body: JSON.stringify(result.body.hits)
   }
 };
