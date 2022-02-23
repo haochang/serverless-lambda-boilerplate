@@ -1,10 +1,9 @@
-service: my-lambda-service
+service: stories
 
 package:
   exclude:
     - '*.md'
     - '.env*'
-    - 'node_modules/**'
     - .serverless/**
 
 plugins:
@@ -17,11 +16,22 @@ provider:
   stage: ${env:STAGE}
   region: us-east-1
   httpApi:
-    authorizers:
-      serviceAuthorizer:
-        identitySource: $request.header.Authorization
-        issuerUrl: https://cognito-idp.us-west-2.amazonaws.com/${env:COGNITO_USERPOOL_ID}
-        audience: ${env:COGNITO_USERPOOL_CLIENT_ID}
+    # authorizers:
+    #   serviceAuthorizer:
+    #     identitySource: $request.header.Authorization
+    #     issuerUrl: https://cognito-idp.us-west-2.amazonaws.com/${env:COGNITO_USERPOOL_ID}
+    #     audience: ${env:COGNITO_USERPOOL_CLIENT_ID}
+    cors:
+      allowedOrigins: '*'
+      allowedHeaders:
+        - Content-Type
+        - X-Amz-Date
+        - Authorization
+        - X-Api-Key
+        - X-Amz-Security-Token
+        - X-Amz-User-Agent
+      allowCredentials: false
+      maxAge: 600 # In seconds
   stackTags:
     role: ${self:service}-${self:provider.stage}
     application_type: serverless
@@ -31,25 +41,16 @@ provider:
     - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
 functions:
-  my-lambda:
-    handler: api/handlers/mylambda.handler
+  stories:
+    handler: src/stories.handleGet
+    role: LambdaElasticSearchAccessRole
     events:
       - httpApi:
-          path: /api/mylambda
+          path: /stories
           method: get
-          authorizer: serviceAuthorizer
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-              - X-Amz-User-Agent
-            allowCredentials: false
-            cacheControl: 'max-age=600, s-maxage=600, proxy-revalidate'
+          # authorizer: serviceAuthorizer
     environment:
+      ELASTICSEARCH_ENDPOINT: !GetAtt ElasticsearchDomain.DomainEndpoint
 
 
 custom:
@@ -58,4 +59,40 @@ custom:
     httpPort: 4000
 
 resources:
-  Description: My lambda stack
+  Description: Stories stack
+  Resources:
+    LambdaElasticSearchAccessRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    ElasticsearchDomain:
+      Type: AWS::Elasticsearch::Domain
+      Properties:
+        DomainName: 'stories'
+        ElasticsearchVersion: '2.3'
+        ElasticsearchClusterConfig:
+          InstanceCount: '1'
+          InstanceType: 't2.micro.elasticsearch'
+        EBSOptions:
+          EBSEnabled: true
+          VolumeSize: '20'
+          VolumeType: 'gp2'
+        AccessPolicies:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Principal:
+                AWS: !GetAtt LambdaElasticSearchAccessRole.Arn
+              Action: 'es:ESHttp*'
+              Resource:
+                - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/stories/*'
+        AdvancedOptions:
+          rest.action.multi.allow_explicit_index: true
