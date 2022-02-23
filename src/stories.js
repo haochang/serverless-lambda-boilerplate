@@ -1,8 +1,7 @@
-const aws4=  import('aws4');
-const fetch = import('node-fetch');
+const aws4 =  require('aws4');
+const fetch = require('node-fetch');
 
 exports.handleGet = async (event, context) => {
-  console.log('aws4', aws4)
   const host = process.env.ELASTICSEARCH_ENDPOINT;
   const indexName = 'stories';
   const headers = {
