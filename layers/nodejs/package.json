@@ -1,0 +1,12 @@
+{
+  "name": "node-modules-layer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@acuris/aws-es-connection": "^2.3.0",
+    "@elastic/elasticsearch": "7.13.0"
+  }
+}

@@ -33,7 +33,7 @@ provider:
       allowCredentials: false
       maxAge: 600 # In seconds
   stackTags:
-    role: ${self:service}-${self:provider.stage}
+    role: ${self:custom.prefix}
     application_type: serverless
   environment:
 
@@ -49,12 +49,24 @@ functions:
           path: /stories
           method: get
           # authorizer: serviceAuthorizer
+    layers:
+      - { Ref: NodeModulesLambdaLayer }
     environment:
       ELASTICSEARCH_ENDPOINT: !GetAtt ElasticsearchDomain.DomainEndpoint
 
+layers:
+  NodeModules:
+    path: layers
+    name: ${self:custom.prefix}-NodeModules
+    description: Lambda layer containing node modules
+    compatibleRuntimes:
+      - nodejs8.10
+    allowedAccounts:
+      - '*'
 
 custom:
   stage: ${opt:stage, self:provider.stage}
+  prefix: ${self:service}-${self:custom.stage}
   serverless-offline:
     httpPort: 4000
 
